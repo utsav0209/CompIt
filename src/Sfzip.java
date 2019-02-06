@@ -2,7 +2,7 @@ import java.io.*;
 import java.util.*;
 /*
  ***************************************************
- *----------SHANNON FANO COMPRESSION------------*
+ *-----------SHANNON FANO COMPRESSION--------------*
  ***************************************************
  */
 
@@ -11,6 +11,7 @@ public class Sfzip{
     static int[][] freq = new int[256][2];
     static String[] ss = new String[256];
     static int count;
+    static int start;
 
     /***************************************************************
      *calculate frequency
@@ -38,7 +39,7 @@ public class Sfzip{
     }
 
     /*********************************************************************
-     *byte to binary conversation
+     *byte to int conversation
      *********************************************************************/
     static int to(byte b){
         int index = b;
@@ -58,7 +59,7 @@ public class Sfzip{
             @Override
             public int compare(final int[] entry1,
                                final int[] entry2) {
-                if (entry1[1] < entry2[1])
+                if (entry1[1] > entry2[1])
                     return 1;
                 else if(entry1[1] == entry2[1])
                     return 0;
@@ -69,7 +70,7 @@ public class Sfzip{
     }
 
     /*********************************************************************
-     *Sorting according to frequency
+     *Generate coding according to frequency
      *********************************************************************/
     static void generateCodes(int l,int h) {
         int pack1 = 0, pack2 = 0, diff1 = 0, diff2 = 0;
@@ -77,8 +78,8 @@ public class Sfzip{
         if ((l + 1) == h || l == h || l > h) {
             if (l == h || l > h)
                 return;
-            ss[freq[h][0]] += "1";
-            ss[freq[l][0]] += "0";
+            ss[freq[h][0]] = ss[freq[h][0]] + "0";
+            ss[freq[l][0]] = ss[freq[l][0]] + "1";
             return;
         }else{
             for(i=l;i<=h-1;i++){
@@ -107,15 +108,16 @@ public class Sfzip{
                 j++;
             }
             k++;
-            for(i=l;i<=k;i++)
-                ss[freq[i][0]] += "0";
-            for(i=k+1;i<=h;i++)
+            for(i=l;i<=k;i++) {
                 ss[freq[i][0]] += "1";
+            }
+            for(i=k+1;i<=h;i++) {
+                ss[freq[i][0]] += "0";
+            }
             generateCodes(l,k);
             generateCodes(k+1,h);
         }
     }
-
 
     /*********************************************************************
      *Create a fake zipped file
@@ -164,13 +166,11 @@ public class Sfzip{
             DataOutputStream data_out = new DataOutputStream(file_out);
 
             data_out.writeInt(count);
-            for(i=0;i<256;i++){
-                if(freq[i][1]==0){
-                    break;
-                }
+            for(i=start;i<256;i++){
                 Byte bt = (byte)i;
-                data_out.writeInt(freq[i][0]);
+                data_out.writeByte((byte)freq[i][0]);
                 data_out.writeInt(freq[i][1]);
+             //   System.out.println((byte)freq[i][0]+":"+freq[i][1]);
             }
 
             long textbits;
@@ -202,7 +202,6 @@ public class Sfzip{
                     break;
                 }
             }
-
         }catch(IOException e){
             System.out.println(e);
         }
@@ -211,16 +210,25 @@ public class Sfzip{
 
     public static void main(String[] args){
         System.out.println("Zipping");
-        String fname = "C:\\Users\\uTsav\\Desktop\\sample5.txt";
+        String fname = "C:\\Users\\uTsav\\Desktop\\sample3.txt";
+        Arrays.fill(ss,"");
         calFreq(fname);
         sortByFreq();
         int x;
         for(x=0;x<256;x++)
-            if(freq[x][1]==0)
+            if(freq[x][1]!=0)
                 break;
-        x--;
-        count = x+1;
+        count = 256-x;
+        start = x;
+        System.out.println("x:"+count);
+        int i;
+        if(count==1)
+            ss[255] = "0";
+        else if(count == 0)
+            return;
+        else
+            generateCodes(x,255);
         fakezip(fname);
-        realzip("C:\\Users\\uTsav\\IdeaProjects\\CompIt\\.idea\\fakezipped.txt","az5"+".huffz");
+        realzip("C:\\Users\\uTsav\\IdeaProjects\\CompIt\\.idea\\fakezipped.txt","az3"+".huffz");
     }
 }

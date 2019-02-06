@@ -55,7 +55,7 @@ public class Main {
     }
 
     /*********************************************************************
-     *byte to binary conversation
+     *byte to int conversation
      **********************************************************************/
     static int to(byte b){
         int index = b;
@@ -220,7 +220,6 @@ public class Main {
 
     }
 
-
     public static void main(String[] args) {
         System.out.println("Zipping");
         String fname = "C:\\Users\\uTsav\\Desktop\\sample3.txt";
@@ -231,4 +230,5 @@ public class Main {
         fakezip(fname);
         realzip("C:\\Users\\uTsav\\IdeaProjects\\CompIt\\.idea\\fakezipped.txt","az1"+".huffz");
     }
+
 }

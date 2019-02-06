@@ -1,38 +1,19 @@
 import java.io.*;
-import java.util.PriorityQueue;
-
+import java.util.*;
 /*
  ***************************************************
- *---------HUFFAMAN CODING DE-COMPRESSION----------*
+ *----------SHANNON FANO De-COMPRESSION------------*
  ***************************************************
  */
 
-public class hunzip {
+public class Sfunzip {
     //Global resources
-    static int[] freq = new int[256];
+    static int[][] freq = new int[256][2];
     static String[] ss = new String[256];
     static String[] btost = new String[256];
     static int putit;
-    static TREE Root;
     static int count;
-    static PriorityQueue<TREE> pq = new PriorityQueue<>();
-
-    //TREE class with auto sorting functionality
-    public static class TREE implements Comparable<TREE>{
-        TREE lchild;
-        TREE rchild;
-        String code;
-        public int value;//Index number or say byte value
-        public int freq;
-
-        public int compareTo(TREE T){
-            if(this.freq < T.freq)
-                return -1;
-            if(this.freq > T.freq)
-                return 1;
-            return 0;
-        }
-    }
+    static int start;
 
     /***************************************************************
      *calculate frequency
@@ -45,29 +26,29 @@ public class hunzip {
             FileInputStream file_in = new FileInputStream(file);
             DataInputStream data_in =  new DataInputStream(file_in);
             count = data_in.readInt();
-
-            for (i=0;i<count;i++){
+            start = 256-count;
+            for (i=start;i<256;i++){
                 bt = data_in.readByte();
+                freq[i][0] = to(bt);
                 ifreq = data_in.readInt();
-                freq[to(bt)] = ifreq;
+                freq[i][1] = ifreq;
             }
             file_in.close();
             data_in.close();
         }catch (IOException e){
             System.out.println("IO exception = " + e);
         }
-        MakeTree();
-        if(count > 1)
-            dfs(Root,"");
-
-        for (i=0;i<256;i++) {
-            if (ss[i] == null)
-                ss[i] = "";
-        }
+        if(count == 0)
+            return;
+        else if(count == 1)
+            ss[255] = "0";
+        else
+            generateCodes(start,255);
     }
 
+
     /*********************************************************************
-     *byte to int conversation
+     *byte to binary conversation
      *********************************************************************/
     static int to(byte b){
         int index = b;
@@ -81,65 +62,53 @@ public class hunzip {
     }
 
     /*********************************************************************
-     * Generete tree from frequencies
+     *Generate coding according to frequency
      *********************************************************************/
-    static void MakeTree(){
-        int i;
-        pq.clear();
-        count=0;
-        for(i=0;i<256;i++){
-            if(freq[i] != 0){
-                TREE Temp = new TREE();
-                Temp.value = i;
-                Temp.code = null;
-                Temp.freq = freq[i];
-                Temp.lchild = null;
-                Temp.rchild = null;
-                pq.add(Temp);
-                count++;
-            }
-        }
-
-        System.out.println("Maketre: "+count);
-        TREE Temp1,Temp2;
-
-        if(count == 0 ){
+    static void generateCodes(int l,int h) {
+        int pack1 = 0, pack2 = 0, diff1 = 0, diff2 = 0;
+        int i, j, d, k=0;
+        if ((l + 1) == h || l == h || l > h) {
+            if (l == h || l > h)
+                return;
+            ss[freq[h][0]] += "0";
+            ss[freq[l][0]] += "1";
             return;
-        }else if(count == 1){
-            for(i=0;i<256;i++){
-                if(freq[i] != 0 ) {
-                    ss[i] = "0";
+        }else{
+            for(i=l;i<=h-1;i++){
+                pack1 += freq[i][1];
+            }
+            pack2 += freq[h][1];
+            diff1 = pack1 - pack2;
+
+            if(diff1 < 0)
+                diff1 *= -1;
+            j=2;
+            while(j!=h-l+1){
+                k=h-j;
+                pack1=0;
+                pack2=0;
+                for(i=l;i<=k;i++)
+                    pack1 += freq[i][1];
+                for(i=h;i>k;i--)
+                    pack2 += freq[i][1];
+                diff2 = pack1 - pack2;
+                if(diff2 < 0)
+                    diff2 *= -1;
+                if(diff2 >= diff1)
                     break;
-                }
+                diff1 = diff2;
+                j++;
             }
-            return;
+            k++;
+            for(i=l;i<=k;i++)
+                ss[freq[i][0]] += "1";
+            for(i=k+1;i<=h;i++)
+                ss[freq[i][0]] += "0";
+            generateCodes(l,k);
+            generateCodes(k+1,h);
         }
-        while(pq.size() != 1){
-            TREE Temp = new TREE();
-            Temp1 = pq.poll();
-            Temp2 = pq.poll();
-            Temp.lchild = Temp1;
-            Temp.rchild = Temp2;
-            Temp.freq = Temp1.freq + Temp2.freq;
-            pq.add(Temp);
-        }
-        Root = pq.poll();
     }
 
-    /*********************************************************************
-     *travers the tree to generate codes
-     *********************************************************************/
-    static void dfs(TREE now,String st){
-        now.code = st;
-        if((now.lchild == null) && (now.rchild == null)){
-            ss[now.value] = st;
-            return;
-        }
-        if(now.lchild != null)
-            dfs(now.lchild,st+"0");
-        if(now.rchild != null)
-            dfs(now.rchild,st+"1");
-    }
 
     /*********************************************************************
      *Integer to string conversion
@@ -187,6 +156,7 @@ public class hunzip {
         }
         return 0;
     }
+
     /*********************************************************************
      *Read zipped file adn generate unzipped file
      *********************************************************************/
@@ -258,14 +228,13 @@ public class hunzip {
     public static void main(String[] args) {
         System.out.println("Unzipping");
         int i;
-        for (i = 0; i < 256; i++)
-            freq[i] = 0;
-        for (i = 0; i < 256; i++)
-            ss[i] = "";
-        String fname = "C:\\Users\\uTsav\\Desktop\\az.huffz";
-        String fname1 = "C:\\Users\\uTsav\\Desktop\\samplehpgu.jpg";
+        Arrays.fill(ss,"");
+        Arrays.fill(btost,"");
+        String fname = "C:\\Users\\uTsav\\Desktop\\az5.huffz";
+        String fname1 = "C:\\Users\\uTsav\\Desktop\\samplehpgu.txt";
         readFreq(fname);
         createBin();
         readBin(fname,fname1);
+        //done
     }
 }
